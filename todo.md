@@ -13,29 +13,29 @@
 ## Phase 1: Core Storage Foundation
 
 ### Data Structure Implementation
-- [ ] Implement `DataPoint` struct:
-  - [ ] Timestamp (nanoseconds)
-  - [ ] Value (f64)
-  - [ ] Tags (string key-value map)
-- [ ] Implement `TimeSeries` struct:
-  - [ ] Series name validation
-  - [ ] Thread-safe data point collection
-- [ ] Validation rules:
-  - [ ] Strictly increasing timestamps
-  - [ ] ASCII-only tag keys/values
-  - [ ] Non-empty series names
-- [ ] Unit tests:
-  - [ ] Valid data acceptance
-  - [ ] Invalid data rejection
-  - [ ] Concurrency safety
+- [x] Implement `DataPoint` struct:
+  - [x] Timestamp (nanoseconds)
+  - [x] Value (f64)
+  - [x] Tags (string key-value map)
+- [x] Implement `TimeSeries` struct:
+  - [x] Series name validation
+  - [x] Thread-safe data point collection
+- [x] Validation rules:
+  - [x] Strictly increasing timestamps
+  - [x] ASCII-only tag keys/values
+  - [x] Non-empty series names
+- [x] Unit tests:
+  - [x] Valid data acceptance
+  - [x] Invalid data rejection
+  - [x] Concurrency safety
 
 ### Write-Ahead Log (WAL)
-- [ ] WAL serialization format:
-  - [ ] Binary encoding
-  - [ ] CRC checksums
-- [ ] Segment management:
-  - [ ] Size-based rotation
-  - [ ] Time-based rotation
+- [x] WAL serialization format:
+  - [x] Binary encoding
+  - [x] CRC checksums
+- [x] Segment management:
+  - [x] Size-based rotation
+  - [x] Time-based rotation
 - [ ] Recovery process:
   - [ ] WAL replay sequence
   - [ ] Corruption detection

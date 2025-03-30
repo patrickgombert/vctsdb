@@ -1,12 +1,12 @@
-use tracing::{info, Level};
-use tracing_subscriber::FmtSubscriber;
 use std::net::SocketAddr;
 use tokio::time::{sleep, Duration};
+use tracing::{info, Level};
+use tracing_subscriber::FmtSubscriber;
 
-mod storage;
 mod ingestion;
-mod query;
 mod metrics;
+mod query;
+mod storage;
 
 #[tokio::main]
 async fn main() {
@@ -29,7 +29,7 @@ async fn main() {
     }
 
     info!("Starting VCTSDB...");
-    
+
     // Spawn a task to record test metrics
     tokio::spawn(async {
         let mut interval = tokio::time::interval(Duration::from_secs(1));
@@ -45,6 +45,8 @@ async fn main() {
     });
 
     // Keep the application running
-    tokio::signal::ctrl_c().await.expect("Failed to listen for ctrl+c");
+    tokio::signal::ctrl_c()
+        .await
+        .expect("Failed to listen for ctrl+c");
     info!("Shutting down...");
 }

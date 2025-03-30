@@ -1,5 +1,5 @@
 //! Performance metrics collection for VCTSDB
-//! 
+//!
 //! This module provides functionality for collecting and exposing performance metrics
 //! in Prometheus format.
 
@@ -52,4 +52,4 @@ mod tests {
         // This is a placeholder test to verify our metrics infrastructure
         assert!(true);
     }
-} 
+}

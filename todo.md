@@ -36,13 +36,13 @@
 - [x] Segment management:
   - [x] Size-based rotation
   - [x] Time-based rotation
-- [ ] Recovery process:
-  - [ ] WAL replay sequence
-  - [ ] Corruption detection
-- [ ] Tests:
-  - [ ] Complete crash recovery simulation
-  - [ ] Partial write recovery
-  - [ ] Segment rotation verification
+- [x] Recovery process:
+  - [x] WAL replay sequence
+  - [x] Corruption detection
+- [x] Tests:
+  - [x] Complete crash recovery simulation
+  - [x] Partial write recovery
+  - [x] Segment rotation verification
 
 ## Phase 2: Storage Engine
 

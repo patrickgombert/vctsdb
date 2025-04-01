@@ -9,6 +9,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use thiserror::Error;
 use tokio::sync::RwLock;
 use uuid::Uuid;
+use tracing::{debug, info, warn, error};
 
 use crate::storage::data::{DataPoint, TimeSeries};
 
@@ -17,18 +18,20 @@ const WAL_VERSION: u32 = 1;
 const DEFAULT_SEGMENT_SIZE: u64 = 64 * 1024 * 1024; // 64MB
 const DEFAULT_SEGMENT_DURATION: u64 = 24 * 60 * 60; // 24 hours
 
-#[derive(Error, Debug)]
+#[derive(Debug, Error)]
 pub enum WalError {
     #[error("IO error: {0}")]
     Io(#[from] io::Error),
     #[error("Serialization error: {0}")]
     Serialization(#[from] serde_json::Error),
-    #[error("Invalid WAL file: {0}")]
-    InvalidFile(String),
-    #[error("CRC mismatch")]
-    CrcMismatch,
-    #[error("Segment rotation error: {0}")]
-    RotationError(String),
+    #[error("Invalid WAL header: {0}")]
+    InvalidHeader(String),
+    #[error("Invalid WAL entry: {0}")]
+    InvalidEntry(String),
+    #[error("Corrupted WAL entry: CRC mismatch")]
+    CorruptedEntry,
+    #[error("No valid segments found")]
+    NoValidSegments,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -74,7 +77,6 @@ impl Segment {
 
     fn update_size(&mut self) -> io::Result<()> {
         self.size = fs::metadata(&self.path)?.len();
-        println!("updated size: {:?}", self.size);
         Ok(())
     }
 
@@ -220,7 +222,7 @@ impl WriteAheadLog {
         reader.read_line(&mut line)?;
 
         if line.trim().is_empty() {
-            return Err(WalError::InvalidFile("Empty line".to_string()));
+            return Err(WalError::InvalidEntry("Empty line".to_string()));
         }
 
         let entry: WalEntry = serde_json::from_str(line.trim())?;
@@ -241,10 +243,183 @@ impl WriteAheadLog {
         let actual_crc = digest.finalize();
 
         if actual_crc != expected_crc {
-            return Err(WalError::CrcMismatch);
+            return Err(WalError::CorruptedEntry);
         }
 
         Ok(entry)
+    }
+
+    /// Replays the WAL to recover data
+    pub async fn replay<F>(&self, mut callback: F) -> Result<(), WalError>
+    where
+        F: FnMut(&str, &DataPoint) -> Result<(), WalError>,
+    {
+        let mut segments = self.get_segments()?;
+        if segments.is_empty() {
+            return Err(WalError::NoValidSegments);
+        }
+
+        // Sort segments by creation time to ensure correct replay order
+        segments.sort_by_key(|s| s.created_at);
+
+        for segment in segments {
+            self.replay_segment(&segment.path, &mut callback)?;
+        }
+
+        Ok(())
+    }
+
+    /// Replays a single segment
+    fn replay_segment<F>(&self, path: &Path, callback: &mut F) -> Result<(), WalError>
+    where
+        F: FnMut(&str, &DataPoint) -> Result<(), WalError>,
+    {
+        let file = File::open(path)?;
+        let mut reader = BufReader::new(file);
+
+        // Read and validate header
+        let mut header_line = String::new();
+        reader.read_line(&mut header_line)?;
+        let header: WalHeader = serde_json::from_str(&header_line)?;
+        
+        if header.magic != WAL_MAGIC {
+            return Err(WalError::InvalidHeader("Invalid magic number".to_string()));
+        }
+        if header.version != WAL_VERSION {
+            return Err(WalError::InvalidHeader("Unsupported WAL version".to_string()));
+        }
+
+        // Read entries
+        let mut line = String::new();
+        while reader.read_line(&mut line)? > 0 {
+            if line.trim().is_empty() {
+                line.clear();
+                continue;
+            }
+
+            // Read entry JSON
+            let entry: WalEntry = match serde_json::from_str(line.trim()) {
+                Ok(e) => e,
+                Err(e) => {
+                    warn!("Failed to parse WAL entry: {}", e);
+                    line.clear();
+                    continue;
+                }
+            };
+
+            // Read CRC
+            let mut crc_bytes = [0u8; 4];
+            reader.read_exact(&mut crc_bytes)?;
+            let expected_crc = u32::from_le_bytes(crc_bytes);
+
+            // Skip newline after CRC
+            let mut newline = [0u8; 1];
+            reader.read_exact(&mut newline)?;
+
+            // Verify CRC
+            let mut digest = self.crc.digest();
+            digest.update(line.trim().as_bytes());
+            let actual_crc = digest.finalize();
+            
+            if actual_crc != expected_crc {
+                error!("CRC mismatch in WAL entry");
+                return Err(WalError::CorruptedEntry);
+            }
+
+            // Create DataPoint and call callback
+            let mut tags = std::collections::HashMap::new();
+            for (k, v) in entry.tags {
+                tags.insert(k, v);
+            }
+            
+            let point = DataPoint::new(entry.timestamp, entry.value, tags);
+            callback(&entry.series_name, &point)?;
+
+            line.clear();
+        }
+
+        Ok(())
+    }
+
+    /// Verifies WAL integrity
+    pub fn verify(&self) -> Result<bool, WalError> {
+        let segments = self.get_segments()?;
+        if segments.is_empty() {
+            return Ok(true);
+        }
+
+        for segment in segments {
+            if !self.verify_segment(&segment.path)? {
+                return Ok(false);
+            }
+        }
+
+        Ok(true)
+    }
+
+    /// Verifies a single segment
+    fn verify_segment(&self, path: &Path) -> Result<bool, WalError> {
+        let file = File::open(path)?;
+        let mut reader = BufReader::new(file);
+
+        // Verify header
+        let mut header_line = String::new();
+        reader.read_line(&mut header_line)?;
+        let header: WalHeader = match serde_json::from_str(&header_line) {
+            Ok(h) => h,
+            Err(_) => return Ok(false),
+        };
+        
+        if header.magic != WAL_MAGIC || header.version != WAL_VERSION {
+            return Ok(false);
+        }
+
+        // Verify entries
+        let mut line = String::new();
+        while reader.read_line(&mut line)? > 0 {
+            if line.trim().is_empty() {
+                continue;
+            }
+
+            // Verify entry JSON
+            if serde_json::from_str::<WalEntry>(&line).is_err() {
+                println!("error: {:?}", line);
+                return Ok(false);
+            }
+
+            // Verify CRC
+            let mut crc_bytes = [0u8; 4];
+            if reader.read_exact(&mut crc_bytes).is_err() {
+                return Ok(false);
+            }
+
+            let expected_crc = u32::from_le_bytes(crc_bytes);
+            let mut digest = self.crc.digest();
+            digest.update(line.as_bytes());
+            let actual_crc = digest.finalize();
+            
+            if actual_crc != expected_crc {
+                return Ok(false);
+            }
+
+            line.clear();
+        }
+
+        Ok(true)
+    }
+
+    /// Gets all valid WAL segments
+    fn get_segments(&self) -> Result<Vec<Segment>, WalError> {
+        let mut segments = Vec::new();
+        
+        for entry in fs::read_dir(&self.directory)? {
+            let entry = entry?;
+            if entry.file_name().to_string_lossy().ends_with(".wal") {
+                segments.push(Segment::new(entry.path()));
+            }
+        }
+
+        Ok(segments)
     }
 }
 
@@ -286,6 +461,7 @@ mod tests {
     use super::*;
     use tempfile::tempdir;
     use tokio::test;
+    use tracing_subscriber::fmt::format::FmtSpan;
 
     #[test]
     async fn test_wal_creation_and_write() {
@@ -363,5 +539,70 @@ mod tests {
         assert_eq!(entry.timestamp, 1000);
         assert_eq!(entry.value, 42.0);
         assert_eq!(entry.tags.get("host").unwrap(), "server1");
+    }
+
+    #[test]
+    async fn test_wal_recovery() {
+        let dir = tempdir().unwrap();
+        let wal = WriteAheadLog::new(dir.path()).unwrap();
+        
+        // Write some test data
+        let series = TimeSeries::new("test_series".to_string()).unwrap();
+        let mut tags = std::collections::HashMap::new();
+        tags.insert("host".to_string(), "server1".to_string());
+        
+        let points = vec![
+            DataPoint::new(1000, 42.0, tags.clone()),
+            DataPoint::new(1001, 43.0, tags.clone()),
+            DataPoint::new(1002, 44.0, tags.clone()),
+        ];
+        
+        for point in &points {
+            wal.write(&series, point).await.unwrap();
+        }
+        
+        // Create a new WAL instance to simulate recovery
+        let recovered_wal = WriteAheadLog::new(dir.path()).unwrap();
+        
+        // Collect recovered points
+        let mut recovered_points = Vec::new();
+        recovered_wal.replay(|series_name, point| {
+            assert_eq!(series_name, "test_series");
+            recovered_points.push(point.clone());
+            Ok(())
+        }).await.unwrap();
+        
+        // Verify recovered data
+        assert_eq!(recovered_points.len(), points.len());
+        for (recovered, original) in recovered_points.iter().zip(points.iter()) {
+            assert_eq!(recovered.timestamp(), original.timestamp());
+            assert_eq!(recovered.value(), original.value());
+            assert_eq!(recovered.tags(), original.tags());
+        }
+    }
+
+    #[test]
+    async fn test_wal_corruption_detection() {
+        let dir = tempdir().unwrap();
+        let wal = WriteAheadLog::new(dir.path()).unwrap();
+        
+        // Write test data
+        let series = TimeSeries::new("test_series".to_string()).unwrap();
+        let mut tags = std::collections::HashMap::new();
+        tags.insert("host".to_string(), "server1".to_string());
+        let point = DataPoint::new(1000, 42.0, tags);
+        wal.write(&series, &point).await.unwrap();
+        
+        // Corrupt the WAL file
+        let segment = wal.current_segment.read().await;
+        let path = segment.as_ref().unwrap().path.clone();
+        drop(segment);
+        
+        let mut file = OpenOptions::new().write(true).open(&path).unwrap();
+        file.seek(SeekFrom::End(-10)).unwrap();
+        file.write_all(b"corrupted").unwrap();
+        
+        // Verify corruption is detected
+        assert!(!wal.verify().unwrap());
     }
 }

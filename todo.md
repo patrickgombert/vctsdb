@@ -47,9 +47,9 @@
 ## Phase 2: Storage Engine
 
 ### LSM Tree Foundation
-- [ ] MemTable implementation:
-  - [ ] Time-ordered insertion
-  - [ ] Capacity thresholds
+- [x] MemTable implementation:
+  - [x] Time-ordered insertion
+  - [x] Capacity thresholds
 - [ ] SSTable format:
   - [ ] Columnar storage layout
   - [ ] Timestamp delta encoding

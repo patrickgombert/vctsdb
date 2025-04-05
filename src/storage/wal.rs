@@ -8,8 +8,8 @@ use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 use thiserror::Error;
 use tokio::sync::RwLock;
+use tracing::{debug, error, info, warn};
 use uuid::Uuid;
-use tracing::{debug, info, warn, error};
 
 use crate::storage::data::{DataPoint, TimeSeries};
 
@@ -281,12 +281,14 @@ impl WriteAheadLog {
         let mut header_line = String::new();
         reader.read_line(&mut header_line)?;
         let header: WalHeader = serde_json::from_str(&header_line)?;
-        
+
         if header.magic != WAL_MAGIC {
             return Err(WalError::InvalidHeader("Invalid magic number".to_string()));
         }
         if header.version != WAL_VERSION {
-            return Err(WalError::InvalidHeader("Unsupported WAL version".to_string()));
+            return Err(WalError::InvalidHeader(
+                "Unsupported WAL version".to_string(),
+            ));
         }
 
         // Read entries
@@ -320,7 +322,7 @@ impl WriteAheadLog {
             let mut digest = self.crc.digest();
             digest.update(line.trim().as_bytes());
             let actual_crc = digest.finalize();
-            
+
             if actual_crc != expected_crc {
                 error!("CRC mismatch in WAL entry");
                 return Err(WalError::CorruptedEntry);
@@ -331,7 +333,7 @@ impl WriteAheadLog {
             for (k, v) in entry.tags {
                 tags.insert(k, v);
             }
-            
+
             let point = DataPoint::new(entry.timestamp, entry.value, tags);
             callback(&entry.series_name, &point)?;
 
@@ -369,7 +371,7 @@ impl WriteAheadLog {
             Ok(h) => h,
             Err(_) => return Ok(false),
         };
-        
+
         if header.magic != WAL_MAGIC || header.version != WAL_VERSION {
             return Ok(false);
         }
@@ -397,7 +399,7 @@ impl WriteAheadLog {
             let mut digest = self.crc.digest();
             digest.update(line.as_bytes());
             let actual_crc = digest.finalize();
-            
+
             if actual_crc != expected_crc {
                 return Ok(false);
             }
@@ -411,7 +413,7 @@ impl WriteAheadLog {
     /// Gets all valid WAL segments
     fn get_segments(&self) -> Result<Vec<Segment>, WalError> {
         let mut segments = Vec::new();
-        
+
         for entry in fs::read_dir(&self.directory)? {
             let entry = entry?;
             if entry.file_name().to_string_lossy().ends_with(".wal") {
@@ -545,33 +547,36 @@ mod tests {
     async fn test_wal_recovery() {
         let dir = tempdir().unwrap();
         let wal = WriteAheadLog::new(dir.path()).unwrap();
-        
+
         // Write some test data
         let series = TimeSeries::new("test_series".to_string()).unwrap();
         let mut tags = std::collections::HashMap::new();
         tags.insert("host".to_string(), "server1".to_string());
-        
+
         let points = vec![
             DataPoint::new(1000, 42.0, tags.clone()),
             DataPoint::new(1001, 43.0, tags.clone()),
             DataPoint::new(1002, 44.0, tags.clone()),
         ];
-        
+
         for point in &points {
             wal.write(&series, point).await.unwrap();
         }
-        
+
         // Create a new WAL instance to simulate recovery
         let recovered_wal = WriteAheadLog::new(dir.path()).unwrap();
-        
+
         // Collect recovered points
         let mut recovered_points = Vec::new();
-        recovered_wal.replay(|series_name, point| {
-            assert_eq!(series_name, "test_series");
-            recovered_points.push(point.clone());
-            Ok(())
-        }).await.unwrap();
-        
+        recovered_wal
+            .replay(|series_name, point| {
+                assert_eq!(series_name, "test_series");
+                recovered_points.push(point.clone());
+                Ok(())
+            })
+            .await
+            .unwrap();
+
         // Verify recovered data
         assert_eq!(recovered_points.len(), points.len());
         for (recovered, original) in recovered_points.iter().zip(points.iter()) {
@@ -585,23 +590,23 @@ mod tests {
     async fn test_wal_corruption_detection() {
         let dir = tempdir().unwrap();
         let wal = WriteAheadLog::new(dir.path()).unwrap();
-        
+
         // Write test data
         let series = TimeSeries::new("test_series".to_string()).unwrap();
         let mut tags = std::collections::HashMap::new();
         tags.insert("host".to_string(), "server1".to_string());
         let point = DataPoint::new(1000, 42.0, tags);
         wal.write(&series, &point).await.unwrap();
-        
+
         // Corrupt the WAL file
         let segment = wal.current_segment.read().await;
         let path = segment.as_ref().unwrap().path.clone();
         drop(segment);
-        
+
         let mut file = OpenOptions::new().write(true).open(&path).unwrap();
         file.seek(SeekFrom::End(-10)).unwrap();
         file.write_all(b"corrupted").unwrap();
-        
+
         // Verify corruption is detected
         assert!(!wal.verify().unwrap());
     }

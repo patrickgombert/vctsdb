@@ -50,17 +50,17 @@
 - [x] MemTable implementation:
   - [x] Time-ordered insertion
   - [x] Capacity thresholds
-- [ ] SSTable format:
-  - [ ] Columnar storage layout
-  - [ ] Timestamp delta encoding
-  - [ ] File format versioning
-- [ ] Flush process:
-  - [ ] Background writer
-  - [ ] Atomic swap
-- [ ] Tests:
-  - [ ] MemTable flush triggers
-  - [ ] SSTable read/write consistency
-  - [ ] Ordered data preservation
+- [x] SSTable format:
+  - [x] Columnar storage layout
+  - [x] Timestamp delta encoding
+  - [x] File format versioning
+- [x] Flush process:
+  - [x] Background writer
+  - [x] Atomic swap
+- [x] Tests:
+  - [x] MemTable flush triggers
+  - [x] SSTable read/write consistency
+  - [x] Ordered data preservation
 
 ### Time-Based Indexing
 - [ ] Index structures:

@@ -2,13 +2,14 @@ use crc::{Crc, CRC_32_ISCSI};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::fs::{self, File, OpenOptions};
-use std::io::{self, BufRead, BufReader, BufWriter, Read, Seek, SeekFrom, Write};
+use std::io::{self, BufRead, BufReader, BufWriter, Read, Write};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 use thiserror::Error;
 use tokio::sync::RwLock;
-use tracing::{debug, error, info, warn};
+
+use tracing::{error, warn};
 use uuid::Uuid;
 
 use crate::storage::data::{DataPoint, TimeSeries};
@@ -461,11 +462,19 @@ impl fmt::Debug for WriteAheadLog {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::tempdir;
-    use tokio::test;
-    use tracing_subscriber::fmt::format::FmtSpan;
+    use crate::storage::data::{DataPoint, TimeSeries};
+    
+    use std::fs::{self, File, OpenOptions};
+    use std::io::{Read, Seek, SeekFrom};
+    
+    
+    use tempfile::{tempdir};
+    
+    
+    
+    
 
-    #[test]
+    #[tokio::test]
     async fn test_wal_creation_and_write() {
         let dir = tempdir().unwrap();
         let wal = WriteAheadLog::new(dir.path()).unwrap();
@@ -483,7 +492,7 @@ mod tests {
         assert!(segment.as_ref().unwrap().path.exists());
     }
 
-    #[test]
+    #[tokio::test]
     async fn test_wal_segment_rotation() {
         let dir = tempdir().unwrap();
         let wal = WriteAheadLog::new(dir.path())
@@ -515,7 +524,7 @@ mod tests {
         );
     }
 
-    #[test]
+    #[tokio::test]
     async fn test_wal_entry_validation() {
         let dir = tempdir().unwrap();
         let wal = WriteAheadLog::new(dir.path()).unwrap();
@@ -543,7 +552,7 @@ mod tests {
         assert_eq!(entry.tags.get("host").unwrap(), "server1");
     }
 
-    #[test]
+    #[tokio::test]
     async fn test_wal_recovery() {
         let dir = tempdir().unwrap();
         let wal = WriteAheadLog::new(dir.path()).unwrap();
@@ -586,7 +595,7 @@ mod tests {
         }
     }
 
-    #[test]
+    #[tokio::test]
     async fn test_wal_corruption_detection() {
         let dir = tempdir().unwrap();
         let wal = WriteAheadLog::new(dir.path()).unwrap();

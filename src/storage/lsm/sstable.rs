@@ -5,9 +5,6 @@ use std::io::{self, Read, Seek, Write};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use tracing::{debug, info, warn};
-
-use crate::storage::data::DataPoint;
 
 /// Magic number for SSTable files
 const SSTABLE_MAGIC: u32 = 0x53535442; // "SSTB"
@@ -31,36 +28,36 @@ pub struct DataBlock {
 
 /// Represents the metadata for an SSTable
 #[derive(Debug)]
-struct SSTableMetadata {
+pub struct SSTableMetadata {
     /// Total number of points in the table
-    point_count: u64,
+    pub point_count: u64,
     /// Minimum timestamp in the table
-    min_timestamp: i64,
+    pub min_timestamp: i64,
     /// Maximum timestamp in the table
-    max_timestamp: i64,
+    pub max_timestamp: i64,
     /// Series names present in the table
-    series_names: Vec<String>,
+    pub series_names: Vec<String>,
     /// Block metadata
-    blocks: Vec<BlockMetadata>,
+    pub blocks: Vec<BlockMetadata>,
 }
 
 /// Metadata for a single block
 #[derive(Debug)]
-struct BlockMetadata {
+pub struct BlockMetadata {
     /// File offset where the block starts
-    offset: u64,
+    pub offset: u64,
     /// Number of points in the block
-    point_count: u32,
+    pub point_count: u32,
     /// Starting timestamp of the block
-    start_timestamp: i64,
+    pub start_timestamp: i64,
 }
 
 /// The on-disk storage format for time series data
 pub struct SSTable {
     /// Path to the SSTable file
-    path: PathBuf,
+    pub path: PathBuf,
     /// Metadata about the SSTable
-    metadata: Arc<RwLock<SSTableMetadata>>,
+    pub metadata: Arc<RwLock<SSTableMetadata>>,
     /// File handle for reading/writing
     file: Arc<RwLock<File>>,
 }
@@ -126,7 +123,7 @@ impl SSTable {
         }
 
         // Seek to the end to get the file size
-        let file_size = file.seek(std::io::SeekFrom::End(0))?;
+        let _file_size = file.seek(std::io::SeekFrom::End(0))?;
 
         // Initialize metadata
         let metadata = SSTableMetadata {
@@ -159,6 +156,13 @@ impl SSTable {
             .max_timestamp
             .max(block.start_timestamp + block.timestamp_deltas.last().unwrap_or(&0));
 
+        // Update series names in metadata
+        for series_name in &block.series_names {
+            if !metadata_guard.series_names.contains(series_name) {
+                metadata_guard.series_names.push(series_name.clone());
+            }
+        }
+
         // Write block metadata
         let block_metadata = BlockMetadata {
             offset,
@@ -169,6 +173,7 @@ impl SSTable {
 
         // Write block data
         self.write_block_data(&mut file_guard, &block)?;
+        file_guard.flush()?;
 
         Ok(())
     }

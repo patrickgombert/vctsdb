@@ -45,7 +45,7 @@ pub fn record_sstable_operation(operation: &str, count: u64) {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    
 
     #[test]
     fn test_metrics_initialization() {

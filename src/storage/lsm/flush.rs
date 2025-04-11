@@ -1,11 +1,10 @@
-use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tokio::task::JoinHandle;
-use tracing::{debug, info, warn};
+use tracing::{info};
 
-use crate::storage::data::{DataPoint, TimeSeries};
+
 use crate::storage::lsm::memtable::MemTable;
 use crate::storage::lsm::sstable::{SSTable, SSTableError, DataBlock};
 
@@ -126,6 +125,9 @@ mod tests {
     use std::sync::Arc;
     use tempfile::tempdir;
     use tokio::sync::RwLock;
+    use crate::storage::TimeSeries;
+    use crate::storage::DataPoint;
+    use std::collections::HashMap;
 
     #[tokio::test]
     async fn test_flush_process() {

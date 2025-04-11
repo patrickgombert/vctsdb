@@ -64,8 +64,8 @@
 
 ### Time-Based Indexing
 - [ ] Index structures:
-  - [ ] MemTable time range tracking
-  - [ ] SSTable metadata catalog
+  - [x] MemTable time range tracking
+  - [x] SSTable metadata catalog  
 - [ ] Query routing:
   - [ ] Time range overlap detection
   - [ ] Multi-level search

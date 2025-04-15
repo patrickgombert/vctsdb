@@ -1,8 +1,11 @@
-pub mod memtable;
-pub mod sstable;
-pub mod flush;
-pub mod catalog;
+mod catalog;
+mod flush;
+mod memtable;
+mod query;
+mod sstable;
 
+pub use catalog::SSTableCatalog;
+pub use flush::{FlushError, FlushManager};
 pub use memtable::{MemTable, MemTableError};
-pub use sstable::{SSTable, SSTableError, DataBlock};
-pub use catalog::{SSTableCatalog, SSTableInfo};
+pub use query::{Query, QueryRouter, TimeRange};
+pub use sstable::{DataBlock, SSTable, SSTableError, SSTableMetadata};

@@ -63,16 +63,16 @@
   - [x] Ordered data preservation
 
 ### Time-Based Indexing
-- [ ] Index structures:
+- [x] Index structures:
   - [x] MemTable time range tracking
   - [x] SSTable metadata catalog  
-- [ ] Query routing:
-  - [ ] Time range overlap detection
-  - [ ] Multi-level search
-- [ ] Tests:
-  - [ ] Point query accuracy
-  - [ ] Range query completeness
-  - [ ] Index update consistency
+- [x] Query routing:
+  - [x] Time range overlap detection
+  - [x] Multi-level search
+- [x] Tests:
+  - [x] Point query accuracy 
+  - [x] Range query completeness
+  - [x] Index update consistency
 
 ## Phase 3: Ingestion Pipeline
 

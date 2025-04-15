@@ -300,6 +300,20 @@ impl SSTable {
             tags,
         })
     }
+
+    /// Scans all blocks in the SSTable
+    pub async fn scan_blocks(&self) -> Vec<DataBlock> {
+        let metadata_guard = self.metadata.read().await;
+        let mut blocks = Vec::new();
+        
+        for (i, _) in metadata_guard.blocks.iter().enumerate() {
+            if let Ok(block) = self.read_block(i).await {
+                blocks.push(block);
+            }
+        }
+        
+        blocks
+    }
 }
 
 #[derive(Debug, thiserror::Error)]

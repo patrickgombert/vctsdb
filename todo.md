@@ -77,19 +77,19 @@
 ## Phase 3: Ingestion Pipeline
 
 ### Base Ingestion Interface
-- [ ] Parser trait:
-  - [ ] Error reporting format
-  - [ ] Batch processing
-- [ ] JSON parser:
-  - [ ] Field mapping
-  - [ ] Type coercion
-- [ ] Validation middleware:
-  - [ ] Cardinality limits
-  - [ ] Value sanity checks
-- [ ] Tests:
-  - [ ] Malformed JSON handling
-  - [ ] Schema mismatch detection
-  - [ ] Throughput benchmarks
+- [x] Parser trait:
+  - [x] Error reporting format
+  - [x] Batch processing
+- [x] JSON parser:
+  - [x] Field mapping
+  - [x] Type coercion
+- [x] Validation middleware:
+  - [x] Cardinality limits
+  - [x] Value sanity checks
+- [x] Tests:
+  - [x] Malformed JSON handling
+  - [x] Schema mismatch detection
+  - [x] Throughput benchmarks
 
 ### Pluggable Format Support
 - [ ] Registry system:

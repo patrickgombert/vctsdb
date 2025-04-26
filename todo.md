@@ -92,16 +92,16 @@
   - [x] Throughput benchmarks
 
 ### Pluggable Format Support
-- [ ] Registry system:
-  - [ ] Priority handling
-  - [ ] Format autodiscovery
-- [ ] CSV parser:
-  - [ ] Header detection
-  - [ ] Type inference
-- [ ] Tests:
-  - [ ] Format negotiation
-  - [ ] Fallback parsing
-  - [ ] Concurrent format registration
+- [x] Registry system:
+  - [x] Priority handling
+  - [x] Format autodiscovery
+- [x] CSV parser:
+  - [x] Header detection
+  - [x] Type inference
+- [x] Tests:
+  - [x] Format negotiation
+  - [x] Fallback parsing
+  - [x] Concurrent format registration
 
 ## Phase 4: Query Foundation
 

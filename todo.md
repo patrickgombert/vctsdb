@@ -106,19 +106,19 @@
 ## Phase 4: Query Foundation
 
 ### Query Parser
-- [ ] Lexical analysis:
-  - [ ] Token stream generation
-  - [ ] Syntax error positions
-- [ ] AST structure:
-  - [ ] Time range expressions
-  - [ ] Tag filter expressions
-- [ ] Semantic validation:
-  - [ ] Function existence checks
-  - [ ] Type checking
-- [ ] Tests:
-  - [ ] Query parse/repair cycle
-  - [ ] Operator precedence
-  - [ ] Edge case queries
+- [x] Lexical analysis:
+  - [x] Token stream generation
+  - [x] Syntax error positions
+- [x] AST structure:
+  - [x] Time range expressions
+  - [x] Tag filter expressions
+- [x] Semantic validation:
+  - [x] Function existence checks
+  - [x] Type checking
+- [x] Tests:
+  - [x] Query parse/repair cycle
+  - [x] Operator precedence
+  - [x] Edge case queries
 
 ### Execution Framework
 - [ ] Query planner:

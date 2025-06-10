@@ -121,16 +121,16 @@
   - [x] Edge case queries
 
 ### Execution Framework
-- [ ] Query planner:
-  - [ ] Index selection
-  - [ ] Predicate pushdown
-- [ ] Execution pipeline:
-  - [ ] Parallel data fetching
-  - [ ] Early result pruning
-- [ ] Tests:
-  - [ ] Explain plan validation
-  - [ ] Memory limit enforcement
-  - [ ] Cancellation support
+- [x] Query planner:
+  - [x] Index selection
+  - [x] Predicate pushdown
+- [x] Execution pipeline:
+  - [x] Parallel data fetching
+  - [x] Early result pruning
+- [x] Tests:
+  - [x] Explain plan validation
+  - [x] Memory limit enforcement
+  - [x] Cancellation support
 
 ## Phase 5: Aggregation System
 

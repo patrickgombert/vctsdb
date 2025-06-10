@@ -1,8 +1,8 @@
-mod catalog;
-mod flush;
-mod memtable;
-mod query;
-mod sstable;
+pub mod memtable;
+pub mod sstable;
+pub mod catalog;
+pub mod query;
+pub mod flush;
 
 pub use catalog::SSTableCatalog;
 pub use flush::{FlushError, FlushManager};

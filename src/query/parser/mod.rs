@@ -1,6 +1,6 @@
-mod lexer;
-mod ast;
-mod validator;
+pub mod lexer;
+pub mod ast;
+pub mod validator;
 
 pub use lexer::{Lexer, Token, LexerError};
 pub use ast::{AstError, Query, TimeRange, FilterExpr, TagFilter, TagFilterOp, FunctionCall, SelectExpr};
